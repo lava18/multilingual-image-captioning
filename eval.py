@@ -7,12 +7,17 @@ from utils import *
 from nltk.translate.bleu_score import corpus_bleu
 import torch.nn.functional as F
 from tqdm import tqdm
+import torch
 
 # Parameters
-data_folder = 'ru_outputs'  # folder with data files saved by create_input_files.py
 data_name = 'coco_5_cap_per_img_5_min_word_freq'  # base name shared by data files
-checkpoint = 'BEST_checkpoint_coco_5_cap_per_img_5_min_word_freq.pth.tar'  # model checkpoint
+
+checkpoint = 'ru_best_checkpoint/BEST_checkpoint_coco_5_cap_per_img_5_min_word_freq.pth.tar'  # model checkpoint
+# checkpoint = 'eng_best_checkpoint/BEST_checkpoint_coco_5_cap_per_img_5_min_word_freq.pth.tar'  # model checkpoint
+
 word_map_file = 'ru_outputs/WORDMAP_coco_5_cap_per_img_5_min_word_freq.json'  # word map, ensure it's the same the data was encoded with and the model was trained with
+# word_map_file = 'eng_outputs/WORDMAP_coco_5_cap_per_img_5_min_word_freq.json'  # word map, ensure it's the same the data was encoded with and the model was trained with
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # sets device for model and PyTorch tensors
 cudnn.benchmark = True  # set to true only if inputs to model are fixed size; otherwise lot of computational overhead
 
@@ -30,11 +35,27 @@ with open(word_map_file, 'r') as j:
     word_map = json.load(j)
 rev_word_map = {v: k for k, v in word_map.items()}
 vocab_size = len(word_map)
+print('VOCAB SIZE = ', vocab_size)
 
 # Normalization transform
 normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                  std=[0.229, 0.224, 0.225])
 
+
+# DataLoader
+eng_loader = torch.utils.data.DataLoader(
+    CaptionDataset('eng_outputs', data_name, 'TEST', transform=transforms.Compose([normalize])),
+    batch_size=1, shuffle=False, num_workers=1, pin_memory=True)
+
+ru_loader = torch.utils.data.DataLoader(
+    CaptionDataset('ru_outputs', data_name, 'TEST', transform=transforms.Compose([normalize])),
+    batch_size=1, shuffle=False, num_workers=1, pin_memory=True)
+
+ru_val_images = []
+for _, (ru_image, _, _, _) in enumerate(ru_loader):
+    ru_image = ru_image.tolist()
+    ru_val_images.append(ru_image)
+    
 
 def evaluate(beam_size):
     """
@@ -43,10 +64,6 @@ def evaluate(beam_size):
     :param beam_size: beam size at which to generate captions for evaluation
     :return: BLEU-4 score
     """
-    # DataLoader
-    loader = torch.utils.data.DataLoader(
-        CaptionDataset(data_folder, data_name, 'TEST', transform=transforms.Compose([normalize])),
-        batch_size=1, shuffle=True, num_workers=1, pin_memory=True)
 
     # TODO: Batched Beam Search
     # Therefore, do not use a batch_size greater than 1 - IMPORTANT!
@@ -58,8 +75,16 @@ def evaluate(beam_size):
     hypotheses = list()
 
     # For each image
-    for i, (image, caps, caplens, allcaps) in enumerate(
-            tqdm(loader, desc="EVALUATING AT BEAM SIZE " + str(beam_size))):
+    for idx, (image, caps, caplens, allcaps) in enumerate(tqdm(ru_loader, desc="EVALUATING AT BEAM SIZE " + str(beam_size))):
+
+        ############ USE WITH ENGLISH TO FIND THE SAME CAPTIONS AS USED IN RU ########
+        # temp_image = image.tolist()
+        # if temp_image not in ru_val_images:
+        #     print('Not Found')
+        #     continue
+        # else:
+        #     print('Found')
+        ##############################################################################
 
         k = beam_size
 
@@ -167,11 +192,31 @@ def evaluate(beam_size):
         hypotheses.append([w for w in seq if w not in {word_map['<start>'], word_map['<end>'], word_map['<pad>']}])
 
         assert len(references) == len(hypotheses)
+        # print('LENGTH = ', len(references))
+
+        if idx == 999:
+            break
 
     # Calculate BLEU-4 scores
+    print(references[:2], hypotheses[:2])
     bleu4 = corpus_bleu(references, hypotheses)
-    print(hypotheses)
     
+    # Dump predictions
+    final_text_predictions = []
+    for refs, hyp in zip(references, hypotheses):
+        orig_captions = []
+        for l in refs:
+            orig_caption = ' '.join([rev_word_map[ind] for ind in l])
+            orig_captions.append(orig_caption)
+
+        pred_caption = ' '.join([rev_word_map[ind] for ind in hyp])
+
+        final_text_predictions.append({'references': orig_captions,
+                                        'hypothesis': pred_caption})
+
+    
+    with open("ru20k_predicted_captions_new.json", "w") as stream:
+        stream.write(json.dumps(final_text_predictions))
 
     return bleu4
 

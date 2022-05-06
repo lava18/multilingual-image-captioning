@@ -96,14 +96,14 @@ def create_input_files(dataset, karpathy_json_path, image_folder, captions_per_i
             h.attrs['captions_per_image'] = captions_per_image
 
             # Create dataset inside HDF5 file to store images
-            images = h.create_dataset('images', (len(impaths[:100000]), 3, 256, 256), dtype='uint8')
+            images = h.create_dataset('images', (len(impaths), 3, 256, 256), dtype='uint8')
 
             print("\nReading %s images and captions, storing to file...\n" % split)
 
             enc_captions = []
             caplens = []
 
-            for i, path in enumerate(tqdm(impaths[:100000])):
+            for i, path in enumerate(tqdm(impaths)):
 
                 # Sample captions
                 if len(imcaps[i]) < captions_per_image:
@@ -233,10 +233,10 @@ def save_checkpoint(data_name, epoch, epochs_since_improvement, encoder, decoder
              'encoder_optimizer': encoder_optimizer,
              'decoder_optimizer': decoder_optimizer}
     filename = 'checkpoint_' + data_name + '.pth.tar'
-    torch.save(state, filename)
+    # torch.save(state, filename)
     # If this checkpoint is the best so far, store a copy so it doesn't get overwritten by a worse checkpoint
     if is_best:
-        torch.save(state, 'BEST_' + filename)
+        torch.save(state, os.path.join('ru_best_checkpoint', 'BEST_' + filename))
 
 
 class AverageMeter(object):

@@ -23,6 +23,7 @@ class CaptionDataset(Dataset):
         # Open hdf5 file where images are stored
         self.h = h5py.File(os.path.join(data_folder, self.split + '_IMAGES_' + data_name + '.hdf5'), 'r')
         self.imgs = self.h['images']
+        # import pdb; pdb.set_trace()
 
         # Captions per image
         self.cpi = self.h.attrs['captions_per_image']
@@ -40,6 +41,7 @@ class CaptionDataset(Dataset):
 
         # Total number of datapoints
         self.dataset_size = len(self.captions)
+        print('Datset size = ', self.dataset_size)
 
     def __getitem__(self, i):
         # Remember, the Nth caption corresponds to the (N // captions_per_image)th image

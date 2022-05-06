@@ -59,7 +59,6 @@ for img_id, img_dict in enumerate(tqdm(data['images'])):
     raw_sentence = sent_dict['raw']
     tokens = sent_dict['tokens']
 
-    # src_text = torch.Tensor([raw_sentence]).to('cuda:0')
     translated = model.generate(**tokenizer([raw_sentence], return_tensors="pt", padding=False).to('cuda:0'))
     tgt_text = [tokenizer.decode(t, skip_special_tokens=True) for t in translated]
 
@@ -69,7 +68,8 @@ for img_id, img_dict in enumerate(tqdm(data['images'])):
     })
     # if data['images'][img_id]['split'] == 'restval':
     #   data['images'][img_id]['split'] = 'val'
-    ru_data["images"].append(data['images'][img_id])
+
+  ru_data["images"].append(data['images'][img_id])
 
 with open("caption_data/ru_dataset_coco.json", "w", encoding='utf-8') as stream:
   stream.write(json.dumps(ru_data, ensure_ascii=False).encode('utf-8').decode())
