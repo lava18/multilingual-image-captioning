@@ -30,6 +30,10 @@ To **resume training at a checkpoint**, point to the corresponding file with the
 
 Note that we perform validation at the end of every training epoch.
 
+## Adapter Fine-tuning
+
+Notebooks for adapter fine-tuning for mBART on Russian and Marathi are present at: `/notebooks/Mr_MASSIVE_AdapterFinetuningMT.ipynb` `/notebooks/Ru_MASSIVE_AdapterFinetuningMT.ipynb`
+
 # Inference and eval
 
 See [`eval.py`](https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Image-Captioning/blob/master/eval.py), which implements this process for calculating the BLEU score on the validation set, with or without Beam Search.
